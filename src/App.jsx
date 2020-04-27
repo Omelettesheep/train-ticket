@@ -1,40 +1,52 @@
-import React, {createContext, useState, useContext} from 'react';
-import logo from './logo.svg';
+import React, { createContext, useState, lazy, Suspense, Component} from 'react';
 import './App.css';
 
+let About = lazy(() => import(/* webpackChunkName: "about" */'./About.jsx'))
 
-const BatteryContext = createContext();
-const OnlineContext = createContext();
+class App extends Component {
+    state = {
+        load: false,
+        error: false,
+    }
+    // 手动触发异步组件的加载
+    load = () => {
+        this.setState({ load: true });
+    }
+    // 加载失败后，点击重试
+    retry = () => {
+        About = lazy(() => import(/* webpackChunkName: "about" */'./About.jsx'));
+        this.setState({ error: false });
+    }
+    // ErrorBoundary 的关键，无需再实现 componentDidCatch
+    static getDerivedStateFromError(e) {
+        return { error: e }
+    }
+    render() {
+        const { load, error } = this.state;
 
-const Leaf = () => {
-    const battery = useContext(BatteryContext);
-    return (
-        <h1>Battery: {battery}</h1>
-    )
-};
+        // 显然错误页
+        if (error) {
+            return (<div>
+                <p>{error.message}</p>
+                <button onClick={this.retry}>retry</button>
+            </div>);
+        }
 
-const Middle = () => {
-    return (
-        <Leaf />
-    )
-};
+        return (
+            <div>
+                <button type="button" onClick={this.load}>load</button>
+                <Suspense fallback={<div>loading</div>}>
+                    {
+                        load && (
 
-function App() {
-    const [battery, setBattery] = useState(30);
-    const [online, setOnline] = useState(false);
-    return (
-        <BatteryContext.Provider value={battery}>
-            <OnlineContext.Provider value={online}>
-                <button type="button" onClick={() => {setBattery(battery - 1)}}>
-                    button
-                </button>
-                <button type="button" onClick={() => {setOnline(!online)}}>
-                    switch
-                </button>
-                <Middle />
-            </OnlineContext.Provider>
-        </BatteryContext.Provider>
-    );
+                            <About />
+
+                        )
+                    }
+                </Suspense>
+            </div>
+        );
+    }
 }
 
 export default App;
